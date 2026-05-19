@@ -1,11 +1,5 @@
 # Comment_IQ
 # 🚀 CommentIQ — AI Powered YouTube Comment Analysis Dashboard
-
-![GitHub stars](https://img.shields.io/github/stars/your-username/commentiq?style=for-the-badge)
-![GitHub forks](https://img.shields.io/github/forks/your-username/commentiq?style=for-the-badge)
-![License](https://img.shields.io/github/license/your-username/commentiq?style=for-the-badge)
-![Made With](https://img.shields.io/badge/Made%20With-JavaScript-blue?style=for-the-badge)
-
 ---
 <img width="712" height="383" alt="demo" src="https://github.com/user-attachments/assets/43e768cd-df2a-437b-8945-0644074ca4a9" />
 
