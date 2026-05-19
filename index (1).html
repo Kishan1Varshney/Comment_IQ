@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CommentIQ — YouTube Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #050810;
+  --surface: #0a0f1e;
+  --card: #0d1426;
+  --card2: #101830;
+  --border: #1a2540;
+  --border2: #1e2d52;
+  --blue: #0ea5e9;
+  --blue2: #38bdf8;
+  --blue3: #7dd3fc;
+  --cyan: #06b6d4;
+  --grey: #94a3b8;
+  --grey2: #64748b;
+  --text: #e2e8f0;
+  --text2: #cbd5e1;
+  --pos: #10b981;
+  --neg: #ef4444;
+  --neu: #f59e0b;
+  --glow: 0 0 20px rgba(14,165,233,0.15);
+  --glow2: 0 0 40px rgba(14,165,233,0.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(14,165,233,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.03) 0%, transparent 60%),
+    linear-gradient(rgba(14,165,233,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14,165,233,0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+  pointer-events:none;
+  z-index:0;
+}
+body::after {
+  content:'';
+  position:fixed;
+  top:-100%;
+  left:0; right:0;
+  height:2px;
+  background: linear-gradient(90deg, transparent, rgba(14,165,233,0.4), transparent);
+  animation: scan 8s linear infinite;
+  pointer-events:none;
+  z-index:1;
+}
+@keyframes scan { to { top:100%; } }
+.wrap { max-width:1280px; margin:0 auto; padding:0 28px; position:relative; z-index:2; }
+
+header {
+  padding:24px 0;
+  border-bottom:1px solid var(--border);
+  margin-bottom:36px;
+  position:relative;
+}
+header::after {
+  content:'';
+  position:absolute;
+  bottom:-1px; left:0;
+  width:200px; height:1px;
+  background: linear-gradient(90deg, var(--blue), transparent);
+}
+.header-inner { display:flex; align-items:center; gap:16px; }
+.logo-box {
+  width:48px; height:48px;
+  border:1px solid var(--blue);
+  border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+  box-shadow: var(--glow);
+}
+.logo-box::before {
+  content:'';
+  position:absolute;
+  inset:3px;
+  border:1px solid rgba(14,165,233,0.2);
+  border-radius:4px;
+}
+.logo-icon { font-size:20px; }
+.brand {
+  font-family:'Orbitron', monospace;
+  font-size:20px;
+  font-weight:900;
+  letter-spacing:2px;
+  color:var(--blue2);
+  text-shadow: 0 0 20px rgba(56,189,248,0.4);
+}
+.brand span { color:var(--grey); font-weight:400; }
+.sys-info {
+  margin-left:auto;
+  display:flex; align-items:center; gap:20px;
+  font-family:'Orbitron', monospace;
+  font-size:10px;
+  letter-spacing:2px;
+  color:var(--grey2);
+}
+.sys-dot {
+  width:6px; height:6px;
+  background:var(--pos);
+  border-radius:50%;
+  box-shadow:0 0 8px var(--pos);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.input-panel {
+  background: var(--card);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  padding:28px 32px;
+  margin-bottom:28px;
+  position:relative;
+  overflow:hidden;
+  box-shadow: var(--glow2);
+}
+.input-panel::before {
+  content:'SYSTEM INPUT';
+  position:absolute;
+  top:12px; right:20px;
+  font-family:'Orbitron', monospace;
+  font-size:9px;
+  letter-spacing:3px;
+  color:var(--border2);
+}
+.panel-label {
+  font-family:'Orbitron', monospace;
+  font-size:10px;
+  letter-spacing:3px;
+  color:var(--blue);
+  margin-bottom:20px;
+  display:flex; align-items:center; gap:10px;
+}
+.panel-label::before {
+  content:'';
+  width:20px; height:1px;
+  background:var(--blue);
+  box-shadow:0 0 8px var(--blue);
+}
+.input-grid { display:grid; grid-template-columns:1fr auto; gap:12px; margin-bottom:14px; }
+.field-group { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.inp {
+  background: var(--surface);
+  border:1px solid var(--border2);
+  border-radius:8px;
+  padding:13px 18px;
+  color:var(--text);
+  font-family:'Rajdhani', sans-serif;
+  font-size:15px;
+  font-weight:500;
+  outline:none;
+  transition:all 0.25s;
+  letter-spacing:0.5px;
+}
+.inp:focus { border-color:var(--blue); box-shadow:0 0 0 1px rgba(14,165,233,0.2), var(--glow); }
+.inp::placeholder { color:var(--grey2); font-size:13px; }
+.run-btn {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--cyan) 100%);
+  color:#050810;
+  border:none;
+  border-radius:8px;
+  padding:13px 32px;
+  font-family:'Orbitron', monospace;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:2px;
+  cursor:pointer;
+  transition:all 0.25s;
+  white-space:nowrap;
+  display:flex; align-items:center; gap:10px;
+  position:relative;
+  overflow:hidden;
+}
+.run-btn::before {
+  content:'';
+  position:absolute;
+  top:-50%; left:-60%;
+  width:40%; height:200%;
+  background:rgba(255,255,255,0.15);
+  transform:skewX(-20deg);
+  transition:left 0.4s;
+}
+.run-btn:hover::before { left:120%; }
+.run-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(14,165,233,0.35); }
+.run-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+.spin { display:none; width:14px; height:14px; border:2px solid rgba(0,0,0,0.3); border-top-color:#050810; border-radius:50%; animation:spin 0.7s linear infinite; }
+.run-btn.loading .spin { display:block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.status-line {
+  display:none;
+  background:rgba(14,165,233,0.06);
+  border:1px solid rgba(14,165,233,0.15);
+  border-radius:6px;
+  padding:11px 16px;
+  margin-top:14px;
+  font-size:13px;
+  color:var(--blue3);
+  letter-spacing:1px;
+  align-items:center; gap:10px;
+}
+.status-line.on { display:flex; }
+.s-dot { width:5px; height:5px; background:var(--blue); border-radius:50%; animation:blink 1s infinite; }
+.err-line {
+  display:none;
+  background:rgba(239,68,68,0.06);
+  border:1px solid rgba(239,68,68,0.2);
+  border-radius:6px;
+  padding:11px 16px;
+  margin-top:10px;
+  font-size:13px;
+  color:#fca5a5;
+}
+.err-line.on { display:block; }
+
+.video-card {
+  display:none;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  padding:20px 24px;
+  margin-bottom:24px;
+  flex-direction:row;
+  gap:20px;
+  align-items:center;
+  box-shadow:var(--glow2);
+  animation:fadeUp 0.5s ease;
+}
+.video-card.on { display:flex; }
+.video-thumb { width:160px; min-width:160px; height:90px; border-radius:8px; object-fit:cover; border:1px solid var(--border2); }
+.video-info { flex:1; }
+.video-title { font-family:'Orbitron', monospace; font-size:12px; font-weight:700; color:var(--blue2); margin-bottom:10px; line-height:1.5; }
+.video-meta { display:flex; gap:20px; flex-wrap:wrap; }
+.vm { font-size:12px; color:var(--grey2); letter-spacing:1px; display:flex; align-items:center; gap:6px; }
+.vm b { color:var(--text2); }
+.vid-badge { margin-left:auto; font-family:'Orbitron', monospace; font-size:9px; letter-spacing:2px; color:var(--blue); border:1px solid var(--border2); padding:4px 10px; border-radius:4px; }
+
+.stats-row {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  margin-bottom:20px;
+  opacity:0;
+  transform:translateY(16px);
+  transition:all 0.5s ease;
+}
+.stats-row.on { opacity:1; transform:translateY(0); }
+.sc {
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:18px 20px;
+  position:relative;
+  overflow:hidden;
+  transition:border-color 0.2s;
+}
+.sc:hover { border-color:var(--blue); }
+.sc::before { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; }
+.sc.total::before { background:linear-gradient(90deg,var(--blue),var(--cyan)); }
+.sc.pos::before { background:var(--pos); box-shadow:0 0 8px var(--pos); }
+.sc.neg::before { background:var(--neg); box-shadow:0 0 8px var(--neg); }
+.sc.neu::before { background:var(--neu); box-shadow:0 0 8px var(--neu); }
+.sc-label { font-family:'Orbitron', monospace; font-size:8px; letter-spacing:3px; color:var(--grey2); margin-bottom:10px; }
+.sc-val { font-family:'Orbitron', monospace; font-size:30px; font-weight:900; line-height:1; }
+.sc.total .sc-val { color:var(--blue2); text-shadow:0 0 20px rgba(56,189,248,0.3); }
+.sc.pos .sc-val { color:var(--pos); text-shadow:0 0 20px rgba(16,185,129,0.3); }
+.sc.neg .sc-val { color:var(--neg); text-shadow:0 0 20px rgba(239,68,68,0.3); }
+.sc.neu .sc-val { color:var(--neu); text-shadow:0 0 20px rgba(245,158,11,0.3); }
+.sc-sub { font-size:11px; color:var(--grey2); margin-top:4px; letter-spacing:1px; }
+
+.filter-bar {
+  display:none;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:14px 20px;
+  margin-bottom:20px;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.filter-bar.on { display:flex; }
+.filter-label { font-family:'Orbitron', monospace; font-size:9px; letter-spacing:3px; color:var(--grey2); margin-right:4px; }
+.fbtn {
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:6px;
+  padding:7px 18px;
+  color:var(--grey);
+  font-family:'Rajdhani', sans-serif;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:1px;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.fbtn:hover { border-color:var(--blue); color:var(--blue2); }
+.fbtn.active { background:rgba(14,165,233,0.1); border-color:var(--blue); color:var(--blue2); }
+.fbtn.pos-f.active { background:rgba(16,185,129,0.1); border-color:var(--pos); color:var(--pos); }
+.fbtn.neg-f.active { background:rgba(239,68,68,0.1); border-color:var(--neg); color:var(--neg); }
+.fbtn.neu-f.active { background:rgba(245,158,11,0.1); border-color:var(--neu); color:var(--neu); }
+.export-btn {
+  margin-left:auto;
+  background:linear-gradient(135deg,#0f766e,#0891b2);
+  border:none;
+  border-radius:6px;
+  padding:7px 18px;
+  color:white;
+  font-family:'Orbitron', monospace;
+  font-size:9px;
+  letter-spacing:2px;
+  cursor:pointer;
+  transition:all 0.2s;
+  display:flex; align-items:center; gap:8px;
+}
+.export-btn:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(8,145,178,0.3); }
+
+.charts-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-bottom:20px;
+  opacity:0;
+  transform:translateY(16px);
+  transition:all 0.5s ease 0.1s;
+}
+.charts-grid.on { opacity:1; transform:translateY(0); }
+.cc {
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  padding:22px 24px;
+  position:relative;
+  overflow:hidden;
+}
+.cc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--border2),transparent); }
+.cc.full { grid-column:1/-1; }
+.cc-title { font-family:'Orbitron', monospace; font-size:10px; font-weight:700; letter-spacing:2px; color:var(--blue2); margin-bottom:4px; display:flex; align-items:center; gap:10px; }
+.cc-title .ico { font-size:14px; }
+.cc-sub { font-size:12px; color:var(--grey2); margin-bottom:18px; letter-spacing:0.5px; }
+.ch-wrap { position:relative; height:220px; }
+.ch-wrap.tall { height:260px; }
+
+.comments-section {
+  opacity:0;
+  transform:translateY(16px);
+  transition:all 0.5s ease 0.2s;
+  margin-bottom:20px;
+}
+.comments-section.on { opacity:1; transform:translateY(0); }
+.cs-card { background:var(--card); border:1px solid var(--border2); border-radius:12px; padding:22px 24px; }
+.comment-table { width:100%; border-collapse:collapse; margin-top:16px; }
+.comment-table th { text-align:left; font-family:'Orbitron', monospace; font-size:9px; letter-spacing:2px; color:var(--grey2); padding:10px 14px; border-bottom:1px solid var(--border2); }
+.comment-table td { padding:12px 14px; border-bottom:1px solid rgba(26,37,64,0.5); font-size:13px; color:var(--text2); vertical-align:top; line-height:1.5; }
+.comment-table tr:hover td { background:rgba(14,165,233,0.02); }
+.comment-table tr:last-child td { border-bottom:none; }
+.st-badge { display:inline-block; padding:3px 10px; border-radius:4px; font-family:'Orbitron', monospace; font-size:8px; letter-spacing:1px; font-weight:700; white-space:nowrap; }
+.st-badge.Positive { background:rgba(16,185,129,0.1); color:var(--pos); border:1px solid rgba(16,185,129,0.2); }
+.st-badge.Negative { background:rgba(239,68,68,0.1); color:var(--neg); border:1px solid rgba(239,68,68,0.2); }
+.st-badge.Neutral { background:rgba(245,158,11,0.1); color:var(--neu); border:1px solid rgba(245,158,11,0.2); }
+.th-badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:11px; color:var(--blue3); background:rgba(14,165,233,0.07); border:1px solid rgba(14,165,233,0.12); }
+.likes-num { color:var(--neg); font-weight:600; font-family:'Orbitron', monospace; font-size:11px; }
+
+.kw-section { opacity:0; transform:translateY(16px); transition:all 0.5s ease 0.3s; margin-bottom:36px; }
+.kw-section.on { opacity:1; transform:translateY(0); }
+.kw-card { background:var(--card); border:1px solid var(--border2); border-radius:12px; padding:22px 24px; }
+.kw-cloud { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+.kw-tag { background:var(--surface); border:1px solid var(--border2); border-radius:5px; padding:6px 14px; font-size:13px; color:var(--grey); cursor:default; transition:all 0.2s; letter-spacing:0.5px; }
+.kw-tag:hover { border-color:var(--blue); color:var(--blue2); background:rgba(14,165,233,0.05); }
+.kw-tag.xl { font-size:17px; font-weight:600; color:var(--blue2); }
+.kw-tag.lg { font-size:15px; font-weight:500; color:var(--text); }
+
+.empty { text-align:center; padding:70px 20px; }
+.empty-icon { font-size:52px; margin-bottom:16px; opacity:0.2; filter:grayscale(1); }
+.empty-title { font-family:'Orbitron', monospace; font-size:16px; font-weight:700; color:var(--grey2); margin-bottom:8px; letter-spacing:2px; }
+.empty-sub { font-size:13px; color:var(--grey2); opacity:0.6; letter-spacing:1px; }
+
+footer { border-top:1px solid var(--border); padding:18px 0; text-align:center; font-family:'Orbitron', monospace; font-size:9px; letter-spacing:3px; color:var(--border2); position:relative; z-index:2; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+@media(max-width:768px) {
+  .stats-row { grid-template-columns:1fr 1fr; }
+  .charts-grid { grid-template-columns:1fr; }
+  .cc.full { grid-column:1; }
+  .input-grid { grid-template-columns:1fr; }
+  .field-group { grid-template-columns:1fr; }
+  .video-card { flex-direction:column; }
+  .video-thumb { width:100%; height:auto; min-width:unset; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="header-inner">
+      <div class="logo-box"><span class="logo-icon">▶</span></div>
+      <div><div class="brand">COMMENT<span>IQ</span></div></div>
+      <div class="sys-info">
+        <div class="sys-dot"></div>
+        <span>SYSTEM ONLINE</span>
+        <span id="clock"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="input-panel">
+    <div class="panel-label">INITIALIZE ANALYSIS</div>
+    <div class="input-grid">
+      <input class="inp" id="videoUrl" type="text" placeholder="https://www.youtube.com/watch?v=..."/>
+      <button class="run-btn" id="runBtn" onclick="startAnalysis()">
+        <div class="spin"></div>
+        <span>EXECUTE</span>
+      </button>
+    </div>
+    <div class="field-group">
+      <input class="inp" id="ytKey" type="password" placeholder="YouTube Data API Key"/>
+      <input class="inp" id="maxC" type="number" value="50" placeholder="Max comments (50)"/>
+    </div>
+    <div class="status-line" id="statusLine"><div class="s-dot"></div><span id="statusTxt">Initializing...</span></div>
+    <div class="err-line" id="errLine"></div>
+  </div>
+
+  <div class="video-card" id="videoCard">
+    <img class="video-thumb" id="vidThumb" src="" alt="thumbnail"/>
+    <div class="video-info">
+      <div class="video-title" id="vidTitle">—</div>
+      <div class="video-meta">
+        <div class="vm">VIEWS <b id="vidViews">—</b></div>
+        <div class="vm">LIKES <b id="vidLikes">—</b></div>
+        <div class="vm">CHANNEL <b id="vidChannel">—</b></div>
+      </div>
+    </div>
+    <div class="vid-badge">LIVE DATA</div>
+  </div>
+
+  <div class="empty" id="emptyState">
+    <div class="empty-icon">📡</div>
+    <div class="empty-title">AWAITING INPUT</div>
+    <div class="empty-sub">PASTE A YOUTUBE URL AND ENTER YOUR API KEY TO BEGIN</div>
+  </div>
+
+  <div id="dashboard" style="display:none">
+    <div class="stats-row" id="statsRow">
+      <div class="sc total"><div class="sc-label">TOTAL COMMENTS</div><div class="sc-val" id="sTotal">0</div><div class="sc-sub">ANALYZED</div></div>
+      <div class="sc pos"><div class="sc-label">POSITIVE</div><div class="sc-val" id="sPos">0%</div><div class="sc-sub" id="sPosN">0 COMMENTS</div></div>
+      <div class="sc neg"><div class="sc-label">NEGATIVE</div><div class="sc-val" id="sNeg">0%</div><div class="sc-sub" id="sNegN">0 COMMENTS</div></div>
+      <div class="sc neu"><div class="sc-label">NEUTRAL</div><div class="sc-val" id="sNeu">0%</div><div class="sc-sub" id="sNeuN">0 COMMENTS</div></div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <span class="filter-label">FILTER</span>
+      <button class="fbtn active" onclick="setFilter('All',this)">ALL</button>
+      <button class="fbtn pos-f" onclick="setFilter('Positive',this)">POSITIVE</button>
+      <button class="fbtn neg-f" onclick="setFilter('Negative',this)">NEGATIVE</button>
+      <button class="fbtn neu-f" onclick="setFilter('Neutral',this)">NEUTRAL</button>
+      <button class="export-btn" onclick="exportExcel()">⬇ EXPORT EXCEL</button>
+    </div>
+
+    <div class="charts-grid" id="chartsGrid">
+      <div class="cc">
+        <div class="cc-title"><span class="ico">◈</span> SENTIMENT MATRIX</div>
+        <div class="cc-sub">Distribution across comment spectrum</div>
+        <div class="ch-wrap"><canvas id="sentChart"></canvas></div>
+      </div>
+      <div class="cc">
+        <div class="cc-title"><span class="ico">◈</span> THEME FREQUENCY</div>
+        <div class="cc-sub">Top comment themes detected</div>
+        <div class="ch-wrap"><canvas id="themeChart"></canvas></div>
+      </div>
+      <div class="cc full">
+        <div class="cc-title"><span class="ico">◈</span> ENGAGEMENT TIMELINE</div>
+        <div class="cc-sub">Comment volume & likes per hour</div>
+        <div class="ch-wrap tall"><canvas id="timeChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="comments-section" id="commentsSection">
+      <div class="cs-card">
+        <div class="cc-title"><span class="ico">◈</span> COMMENT INTELLIGENCE</div>
+        <div class="cc-sub">Sorted by engagement — <span id="showingCount">0</span> comments shown</div>
+        <table class="comment-table">
+          <thead><tr><th>#</th><th>COMMENT</th><th>SENTIMENT</th><th>THEME</th><th>❤ LIKES</th></tr></thead>
+          <tbody id="commentBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="kw-section" id="kwSection">
+      <div class="kw-card">
+        <div class="cc-title"><span class="ico">◈</span> KEYWORD INTELLIGENCE</div>
+        <div class="cc-sub">Most frequent terms across all comments</div>
+        <div class="kw-cloud" id="kwCloud"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>COMMENTIQ · YOUTUBE ANALYTICS ENGINE · POWERED BY YOUTUBE DATA API</footer>
+</div>
+
+<script>
+setInterval(()=>{
+  const d=new Date();
+  document.getElementById('clock').textContent=d.toLocaleTimeString('en-US',{hour12:false});
+},1000);
+
+let allComments=[],allAnalysis=[],currentFilter='All';
+let sentInst,themeInst,timeInst;
+
+function getVideoId(url){
+  try{
+    const u=new URL(url);
+    if(u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('?')[0];
+    return u.searchParams.get('v');
+  }catch{return null;}
+}
+function setStatus(msg){document.getElementById('statusLine').classList.add('on');document.getElementById('statusTxt').textContent=msg;}
+function showErr(msg){const e=document.getElementById('errLine');e.textContent='⚠ '+msg;e.classList.add('on');}
+function clearErr(){document.getElementById('errLine').classList.remove('on');}
+
+async function fetchVideoInfo(videoId,ytKey){
+  const r=await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${ytKey}`);
+  const d=await r.json();
+  if(!d.items?.length) return null;
+  const item=d.items[0];
+  return{
+    title:item.snippet.title,
+    thumb:item.snippet.thumbnails.medium?.url||item.snippet.thumbnails.default?.url,
+    views:parseInt(item.statistics.viewCount||0).toLocaleString(),
+    likes:parseInt(item.statistics.likeCount||0).toLocaleString(),
+    channel:item.snippet.channelTitle
+  };
+}
+
+async function fetchComments(videoId,ytKey,max){
+  let comments=[],token='';
+  while(comments.length<max){
+    const r=await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=100&order=relevance${token?'&pageToken='+token:''}&key=${ytKey}`);
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    for(const item of d.items){
+      const s=item.snippet.topLevelComment.snippet;
+      comments.push({text:s.textDisplay.replace(/<[^>]+>/g,''),likes:s.likeCount,publishedAt:s.publishedAt});
+    }
+    if(!d.nextPageToken) break;
+    token=d.nextPageToken;
+  }
+  return comments.slice(0,max);
+}
+
+function analyzeLocally(comments){
+  const posWords=['good','great','amazing','love','best','awesome','excellent','perfect','wonderful','fantastic','superb','nice','beautiful','brilliant','helpful','thank','thanks','incredible','outstanding','cool','wow','yes','happy','enjoy','enjoyed','liked','loved','bahut','accha','zabardast','mast','badiya','shukriya','bhai','yaar','fire','lit'];
+  const negWords=['bad','worst','hate','boring','waste','terrible','awful','horrible','disappoint','dislike','poor','sad','wrong','fake','stupid','useless','bekar','bakwaas','faltu','pathetic','ridiculous','annoying','trash','garbage','cringe'];
+  const themeMap=[
+    {words:['sound','audio','voice','music','song','beat','background'],theme:'Audio'},
+    {words:['edit','cut','visual','effect','color','graphic','animation'],theme:'Editing'},
+    {words:['funny','laugh','comedy','humor','joke','lol','haha'],theme:'Humor'},
+    {words:['story','plot','script','drama','scene','episode'],theme:'Story'},
+    {words:['act','actor','actress','performance','cast','role'],theme:'Acting'},
+    {words:['quality','resolution','hd','4k','picture','camera'],theme:'Quality'},
+    {words:['reaction','react','response','reply','comment'],theme:'Reaction'},
+  ];
+  return comments.map(c=>{
+    const words=c.text.toLowerCase().split(/\W+/);
+    let posScore=words.filter(w=>posWords.includes(w)).length;
+    let negScore=words.filter(w=>negWords.includes(w)).length;
+    let sentiment=posScore>negScore?'Positive':negScore>posScore?'Negative':'Neutral';
+    let theme='Content';
+    for(const t of themeMap){if(words.some(w=>t.words.includes(w))){theme=t.theme;break;}}
+    return{sentiment,theme};
+  });
+}
+
+function getKeywords(comments){
+  const stop=new Set(['the','a','an','is','it','in','on','at','to','of','and','or','but','this','that','was','are','for','with','i','you','he','she','we','they','my','your','his','her','its','me','him','us','be','been','have','has','had','do','does','did','will','would','could','should','not','no','so','if','as','by','from','up','out','just','more','get','got','like','very','really','much','also','than','then','when','what','who','how','im','dont','cant','one','all','wont','about','into','were','their','they','video','watch','this','that','also','bhi','hai','ka','ki','ke','ko','se','aur','kya','mujhe']);
+  const freq={};
+  comments.forEach(c=>{c.text.toLowerCase().split(/\W+/).forEach(w=>{if(w.length>3&&!stop.has(w)&&isNaN(w)) freq[w]=(freq[w]||0)+1;});});
+  return Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,28);
+}
+
+function renderAll(comments,analysis){
+  const total=comments.length;
+  const counts={Positive:0,Negative:0,Neutral:0};
+  analysis.forEach(a=>{if(counts[a.sentiment]!==undefined)counts[a.sentiment]++;});
+
+  document.getElementById('sTotal').textContent=total;
+  document.getElementById('sPos').textContent=Math.round(counts.Positive/total*100)+'%';
+  document.getElementById('sNeg').textContent=Math.round(counts.Negative/total*100)+'%';
+  document.getElementById('sNeu').textContent=Math.round(counts.Neutral/total*100)+'%';
+  document.getElementById('sPosN').textContent=counts.Positive+' COMMENTS';
+  document.getElementById('sNegN').textContent=counts.Negative+' COMMENTS';
+  document.getElementById('sNeuN').textContent=counts.Neutral+' COMMENTS';
+
+  if(sentInst)sentInst.destroy();
+  sentInst=new Chart(document.getElementById('sentChart'),{
+    type:'doughnut',
+    data:{labels:['Positive','Negative','Neutral'],datasets:[{data:[counts.Positive,counts.Negative,counts.Neutral],backgroundColor:['rgba(16,185,129,0.8)','rgba(239,68,68,0.8)','rgba(245,158,11,0.8)'],borderColor:['#10b981','#ef4444','#f59e0b'],borderWidth:2,hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{family:'Rajdhani',size:13},padding:16}}}}
+  });
+
+  const themes={};
+  analysis.forEach(a=>{themes[a.theme]=(themes[a.theme]||0)+1;});
+  const topThemes=Object.entries(themes).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  if(themeInst)themeInst.destroy();
+  themeInst=new Chart(document.getElementById('themeChart'),{
+    type:'bar',
+    data:{labels:topThemes.map(t=>t[0]),datasets:[{data:topThemes.map(t=>t[1]),backgroundColor:'rgba(14,165,233,0.15)',borderColor:'#0ea5e9',borderWidth:1.5,borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#64748b',font:{family:'Rajdhani',size:12}},grid:{color:'rgba(26,37,64,0.8)'}},y:{ticks:{color:'#94a3b8',font:{family:'Rajdhani',size:13}},grid:{display:false}}}}
+  });
+
+  const hourMap={};
+  comments.forEach(c=>{
+    const h=new Date(c.publishedAt).toISOString().slice(0,13)+':00';
+    if(!hourMap[h])hourMap[h]={count:0,likes:0};
+    hourMap[h].count++;hourMap[h].likes+=c.likes;
+  });
+  const hours=Object.keys(hourMap).sort();
+  if(timeInst)timeInst.destroy();
+  timeInst=new Chart(document.getElementById('timeChart'),{
+    type:'bar',
+    data:{
+      labels:hours.map(h=>h.slice(5,16)),
+      datasets:[
+        {label:'Comments',data:hours.map(h=>hourMap[h].count),backgroundColor:'rgba(14,165,233,0.15)',borderColor:'#0ea5e9',borderWidth:1.5,borderRadius:4,yAxisID:'y'},
+        {label:'Likes',data:hours.map(h=>hourMap[h].likes),type:'line',borderColor:'#ef4444',backgroundColor:'transparent',borderWidth:2,pointRadius:4,pointBackgroundColor:'#ef4444',yAxisID:'y1',tension:0.4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{family:'Rajdhani',size:13}}}},scales:{x:{ticks:{color:'#64748b',font:{family:'Rajdhani',size:11},maxRotation:45},grid:{color:'rgba(26,37,64,0.8)'}},y:{ticks:{color:'#0ea5e9',font:{family:'Rajdhani'}},grid:{color:'rgba(26,37,64,0.8)'},title:{display:true,text:'Comments',color:'#0ea5e9',font:{family:'Rajdhani'}}},y1:{position:'right',ticks:{color:'#ef4444',font:{family:'Rajdhani'}},grid:{display:false},title:{display:true,text:'Likes',color:'#ef4444',font:{family:'Rajdhani'}}}}}
+  });
+
+  const kws=getKeywords(comments);
+  const maxF=kws[0]?.[1]||1;
+  document.getElementById('kwCloud').innerHTML=kws.map(([w,f])=>{
+    const cls=f/maxF>0.6?'xl':f/maxF>0.3?'lg':'';
+    return`<span class="kw-tag ${cls}">${w} <span style="opacity:0.4;font-size:10px">${f}</span></span>`;
+  }).join('');
+
+  renderTable('All');
+}
+
+function renderTable(filter){
+  const merged=allComments.map((c,i)=>({...c,...allAnalysis[i]}));
+  const sorted=[...merged].sort((a,b)=>b.likes-a.likes);
+  const filtered=filter==='All'?sorted:sorted.filter(c=>c.sentiment===filter);
+  document.getElementById('showingCount').textContent=filtered.length;
+  document.getElementById('commentBody').innerHTML=filtered.slice(0,30).map((c,i)=>`
+    <tr>
+      <td style="color:var(--grey2);font-family:'Orbitron',monospace;font-size:11px">${String(i+1).padStart(2,'0')}</td>
+      <td style="max-width:500px">${c.text.slice(0,180)}${c.text.length>180?'…':''}</td>
+      <td><span class="st-badge ${c.sentiment}">${c.sentiment.toUpperCase()}</span></td>
+      <td><span class="th-badge">${c.theme}</span></td>
+      <td><span class="likes-num">♥ ${c.likes.toLocaleString()}</span></td>
+    </tr>
+  `).join('');
+}
+
+function setFilter(filter,btn){
+  currentFilter=filter;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable(filter);
+}
+
+function exportExcel(){
+  const merged=allComments.map((c,i)=>({
+    Comment:c.text,
+    Sentiment:allAnalysis[i]?.sentiment||'',
+    Theme:allAnalysis[i]?.theme||'',
+    Likes:c.likes,
+    Date:c.publishedAt
+  }));
+  const ws=XLSX.utils.json_to_sheet(merged);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Comments");
+  XLSX.writeFile(wb,"youtube_comments_analysis.xlsx");
+}
+
+async function startAnalysis(){
+  clearErr();
+  const url=document.getElementById('videoUrl').value.trim();
+  const ytKey=document.getElementById('ytKey').value.trim();
+  const max=parseInt(document.getElementById('maxC').value)||50;
+  if(!url) return showErr('YouTube URL daalna zaroori hai!');
+  if(!ytKey) return showErr('YouTube API Key daalna zaroori hai!');
+  const videoId=getVideoId(url);
+  if(!videoId) return showErr('Valid YouTube URL nahi hai!');
+
+  const btn=document.getElementById('runBtn');
+  btn.disabled=true;btn.classList.add('loading');
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('videoCard').classList.remove('on');
+
+  try{
+    setStatus('Fetching video information...');
+    const info=await fetchVideoInfo(videoId,ytKey);
+    if(info){
+      document.getElementById('vidThumb').src=info.thumb;
+      document.getElementById('vidTitle').textContent=info.title;
+      document.getElementById('vidViews').textContent=info.views;
+      document.getElementById('vidLikes').textContent=info.likes;
+      document.getElementById('vidChannel').textContent=info.channel;
+      document.getElementById('videoCard').classList.add('on');
+    }
+    setStatus(`Fetching up to ${max} comments...`);
+    allComments=await fetchComments(videoId,ytKey,max);
+    setStatus(`Analyzing ${allComments.length} comments...`);
+    allAnalysis=analyzeLocally(allComments);
+    setStatus('Rendering dashboard...');
+    document.getElementById('dashboard').style.display='block';
+    setTimeout(()=>{
+      document.getElementById('statsRow').classList.add('on');
+      document.getElementById('filterBar').classList.add('on');
+      document.getElementById('chartsGrid').classList.add('on');
+      document.getElementById('commentsSection').classList.add('on');
+      document.getElementById('kwSection').classList.add('on');
+    },100);
+    renderAll(allComments,allAnalysis);
+    document.getElementById('statusLine').classList.remove('on');
+  }catch(err){
+    document.getElementById('statusLine').classList.remove('on');
+    document.getElementById('emptyState').style.display='block';
+    showErr(err.message||'Kuch galat ho gaya!');
+  }
+  btn.disabled=false;btn.classList.remove('loading');
+}
+
+document.getElementById('videoUrl').addEventListener('keydown',e=>{if(e.key==='Enter')startAnalysis();});
+</script>
+</body>
+</html>
