@@ -41,7 +41,7 @@ along with:
 ## Demo GIF
 
 ```md id="4d53ud"
-![CommentIQ Demo](assets/demo.gif.gif)
+![CommentIQ Demo](assets/demo.gif)
 ```
 
 ---
